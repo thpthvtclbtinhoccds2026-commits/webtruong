@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Modal, { ModalCloseButton } from './Modal.jsx';
 import Icon from './Icons.jsx';
 import { CATEGORY_NAMES, formatGoogleDriveUrl } from '../data.js';
+import { AVAILABLE_IMAGE_KEYS, IMAGE_ALT, imageSrc } from '../assets/images.js';
 
 const emptyDraft = {
   category: CATEGORY_NAMES[1],
@@ -54,6 +55,25 @@ export default function PostFormModal({ initial, onClose, onSave }) {
 
   const previews = draft.images.map(formatGoogleDriveUrl).filter(Boolean);
 
+  // Ảnh có sẵn trong repo (bỏ các cỡ phụ -full/-thumb và banner)
+  const libraryItems = AVAILABLE_IMAGE_KEYS.filter(
+    (k) => k !== 'banner' && k !== 'bannerA4' && k !== 'logo',
+  ).map((key) => ({
+    key,
+    src: imageSrc(key, 'card'),
+    thumb: imageSrc(key, 'thumb'),
+    alt: IMAGE_ALT[key] || `Ảnh tư liệu ${key}`,
+  }));
+
+  /** Thêm ảnh từ thư viện: lưu bằng KEY ngắn (a1..a7) để tự nối cỡ thumb/card/full.
+   *  Ô trống đầu tiên sẽ được điền; nếu đã có ảnh này thì bỏ qua (chống trùng). */
+  const addFromLibrary = (key) => {
+    if (draft.images.some((v) => v.trim() === key)) return;
+    const idx = draft.images.findIndex((v) => !v.trim());
+    if (idx >= 0) return setImageAt(idx, key);
+    set('images', [...draft.images, key]);
+  };
+
   return (
     <Modal labelledBy="post-form-title" onClose={onClose} panelClassName="max-w-3xl p-6 sm:p-8">
       <ModalCloseButton onClick={onClose} />
@@ -62,7 +82,8 @@ export default function PostFormModal({ initial, onClose, onSave }) {
         {editing ? 'Sửa bài viết / tư liệu' : 'Thêm mục mới'}
       </h2>
       <p className="mt-1 text-xs text-stone-500">
-        Dán link Google Drive (dạng xem/chia sẻ) — hệ thống tự chuyển sang link ảnh trực tiếp.
+        Chọn nhanh một ảnh có sẵn trong thư viện nhà trường, hoặc dán link Google Drive
+        (dạng xem/chia sẻ) — hệ thống tự chuyển sang link ảnh trực tiếp.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-5">
@@ -137,11 +158,12 @@ export default function PostFormModal({ initial, onClose, onSave }) {
                 <label htmlFor={`img-${i}`} className="sr-only">Link ảnh {i + 1}</label>
                 <input
                   id={`img-${i}`}
-                  type="url"
+                  type="text"
+                  list="anh-co-san"
                   value={url}
                   onChange={(e) => setImageAt(i, e.target.value)}
                   className="field-input"
-                  placeholder="https://drive.google.com/file/d/ID/view"
+                  placeholder="Chọn ảnh bên dưới, hoặc dán link Google Drive…"
                 />
                 <button
                   type="button"
@@ -155,6 +177,37 @@ export default function PostFormModal({ initial, onClose, onSave }) {
               </li>
             ))}
           </ul>
+          {/* THƯ VIỆN ẢNH CÓ SẴN trong repo — bấm để thêm vào bài viết */}
+          <div className="mt-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-stone-600">
+              Thư viện ảnh của trường ({libraryItems.length} ảnh) — bấm để thêm
+            </p>
+            <ul className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+              {libraryItems.map((it) => (
+                <li key={it.key}>
+                  <button
+                    type="button"
+                    onClick={() => addFromLibrary(it.key)}
+                    title={`Thêm ảnh ${it.key}`}
+                    aria-label={`Thêm ảnh ${it.key}: ${it.alt}`}
+                    className="group block w-full overflow-hidden rounded-lg border border-stone-300 bg-white p-1 transition hover:border-accent focus-ring"
+                  >
+                    <img src={it.thumb} alt="" loading="lazy" decoding="async"
+                      className="aspect-square w-full rounded object-cover" />
+                    <span className="mt-1 block truncate text-center text-[10px] font-semibold text-stone-600 group-hover:text-accent">
+                      {it.key}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <datalist id="anh-co-san">
+              {libraryItems.map((it) => (
+                <option key={it.key} value={it.key} label={`${it.alt} (${it.src})`} />
+              ))}
+            </datalist>
+          </div>
+
           {previews.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2">
               {previews.slice(0, 8).map((src, i) => (

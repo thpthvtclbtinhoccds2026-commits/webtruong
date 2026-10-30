@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { CATEGORIES, formatGoogleDriveUrl, SCHOOL } from '../data.js';
+import { imageSrc } from '../assets/images.js';
 import { MediaContent } from './Media.jsx';
 import Icon from './Icons.jsx';
 
-const KY_UOC_FALLBACK_IMG =
-  'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80';
+// Ảnh dự phòng cho "Ký ức trường xưa": dùng ảnh THẬT a7 trong repo.
+const KY_UOC_FALLBACK_IMG = '/img/a7-900.jpg';
 
 /** Hiện dần khi cuộn (IntersectionObserver), tự tắt nếu reduced-motion. */
 function useReveal() {
@@ -112,7 +113,7 @@ export function TimelineView({ posts }) {
         className="no-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto pb-3 outline-offset-4"
       >
         {sorted.map((post, idx) => {
-          const imgs = (post.images || []).map(formatGoogleDriveUrl);
+          const imgs = (post.images || []).map((x) => imageSrc(formatGoogleDriveUrl(x), 'thumb'));
           return (
             <li key={post.id} className="relative flex min-w-[290px] max-w-[340px] shrink-0 snap-start flex-col md:min-w-[340px]">
               {/* Trục + nút mốc */}
@@ -134,8 +135,15 @@ export function TimelineView({ posts }) {
                 </div>
                 {imgs.length > 0 && (
                   <figure className="archive-frame mt-4 overflow-hidden">
-                    <img src={imgs[0]} alt={`Tư liệu năm ${post.year}: ${post.title}`} loading="lazy"
-                      className="h-40 w-full object-cover" />
+                    <img
+                      src={imgs[0]}
+                      alt={`Tư liệu năm ${post.year}: ${post.title}`}
+                      loading="lazy"
+                      decoding="async"
+                      width={480}
+                      height={360}
+                      className="h-40 w-full object-cover"
+                    />
                   </figure>
                 )}
               </Reveal>
@@ -152,13 +160,20 @@ export function MemoryGrid({ posts }) {
   return (
     <section aria-label="Góc ký ức các khóa" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {posts.map((post) => {
-        const imgs = (post.images || []).map(formatGoogleDriveUrl);
+        const imgs = (post.images || []).map((x) => imageSrc(formatGoogleDriveUrl(x)));
         const mainImg = imgs[0] ?? KY_UOC_FALLBACK_IMG;
         return (
           <Reveal key={post.id} as="article" className="flex flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift">
             <div className="relative h-56 overflow-hidden">
-              <img src={mainImg} alt={`Kỷ niệm ${post.year}: ${post.title}`} loading="lazy"
-                className="h-full w-full object-cover transition duration-500 hover:scale-[1.04]" />
+              <img
+                src={mainImg}
+                alt={`Kỷ niệm ${post.year}: ${post.title}`}
+                loading="lazy"
+                decoding="async"
+                width={900}
+                height={675}
+                className="h-full w-full object-cover transition duration-500 hover:scale-[1.04]"
+              />
               <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow">
                 {post.year}
               </span>

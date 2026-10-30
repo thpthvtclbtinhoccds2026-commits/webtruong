@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Modal, { ModalCloseButton } from './Modal.jsx';
 import Icon from './Icons.jsx';
 import { CATEGORIES, SCHOOL_YEARS, formatGoogleDriveUrl } from '../data.js';
+import { AVAILABLE_BANNERS, imageSrc } from '../assets/images.js';
 
 export default function AdminDashboard({ posts, onClose, onLogout, onAddPost, onUpdatePost, onDeletePost, bannerImage, onChangeBanner }) {
   const [editingId, setEditingId] = useState(null);
@@ -69,20 +70,44 @@ export default function AdminDashboard({ posts, onClose, onLogout, onAddPost, on
           <label htmlFor="banner-input" className="sr-only">Link ảnh bìa</label>
           <input
             id="banner-input"
-            type="url"
+            type="text"
             value={bannerInput}
             onChange={(e) => setBannerInput(e.target.value)}
             className="field-input flex-1"
-            placeholder="https://drive.google.com/... hoặc link ảnh trực tiếp"
+            placeholder="Chọn 1 ảnh bên dưới, hoặc dán link Google Drive…"
           />
           <button type="button" onClick={applyBanner} className="btn-primary focus-ring shrink-0">
             Cập nhật ảnh bìa
           </button>
         </div>
         {bannerInput && (
-          <img src={formatGoogleDriveUrl(bannerInput)} alt="Xem trước ảnh bìa" loading="lazy"
-            className="mt-3 h-24 w-full rounded-lg object-cover ring-1 ring-stone-200" />
+          <img
+            src={imageSrc(formatGoogleDriveUrl(bannerInput), 'full')}
+            alt="Xem trước ảnh bìa"
+            loading="lazy"
+            decoding="async"
+            className="mt-3 h-24 w-full rounded-lg object-cover ring-1 ring-stone-200"
+          />
         )}
+        {/* Ảnh bìa THẬT có sẵn trong repo — bấm để chọn, bấm "Cập nhật" để lưu */}
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {AVAILABLE_BANNERS.map((b) => (
+            <li key={b.key}>
+              <button
+                type="button"
+                onClick={() => setBannerInput(b.key)}
+                aria-label={`Dùng ảnh bìa ${b.label}`}
+                aria-pressed={bannerInput === b.key}
+                className={`overflow-hidden rounded-lg border-2 bg-white p-1 transition focus-ring ${
+                  bannerInput === b.key ? 'border-accent' : 'border-stone-300 hover:border-accent'
+                }`}
+              >
+                <img src={b.src} alt="" loading="lazy" decoding="async" className="h-14 w-24 rounded object-cover" />
+                <span className="mt-0.5 block text-center text-[10px] font-semibold text-stone-600">{b.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* SEARCH + ADD */}

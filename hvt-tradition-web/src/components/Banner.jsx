@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { formatGoogleDriveUrl, SCHOOL } from '../data.js';
-import { resolveImage, PLACEHOLDER } from '../assets/images.js';
+import { imageSrc, PLACEHOLDER } from '../assets/images.js';
 import Icon from './Icons.jsx';
 
 /** Banner trang chủ: ảnh tư liệu lớn + lớp phủ trầm + dòng chữ serif. */
 export default function Banner({ bannerImage }) {
   const [failed, setFailed] = useState(false);
-  const src = failed ? PLACEHOLDER : resolveImage(formatGoogleDriveUrl(bannerImage));
+  // Ảnh banner dùng cỡ lớn nhất (1600) nếu key khớp ảnh trong repo.
+  const src = failed ? PLACEHOLDER : imageSrc(formatGoogleDriveUrl(bannerImage), 'full');
   return (
     <section className="relative isolate flex min-h-[340px] flex-col justify-end overflow-hidden bg-primary text-white sm:min-h-[420px]">
       <div className="absolute inset-0 -z-10">

@@ -32,8 +32,8 @@ export const SCHOOL_YEARS = [
   '2023 - 2024',
 ];
 
-export const DEFAULT_BANNER =
-  'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1600&q=80';
+// Banner mặc định: ẢNH THẬT của trường (public/img/banner-a1.jpg — crop 16:9).
+export const DEFAULT_BANNER = '/img/banner-a1.jpg';
 
 export const DEFAULT_POSTS = [
   {
@@ -43,9 +43,7 @@ export const DEFAULT_POSTS = [
     title: 'Giới thiệu chung về trường THPT Hoàng Văn Thụ',
     content:
       'Trường THPT Hoàng Văn Thụ tọa lạc tại phường Vàng Danh, tỉnh Quảng Ninh, là nơi nuôi dưỡng ước mơ, hoài bão của các thế hệ học sinh.',
-    images: [
-      'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
-    ],
+    images: ['a1', 'a2'], // key ảnh thật -> tự nối cỡ thumb/card/full
     videos: [],
   },
   {
@@ -55,9 +53,7 @@ export const DEFAULT_POSTS = [
     title: 'Thành lập trường',
     content:
       'Những ngày đầu thành lập nhà trường với nhiều khó khăn, thử thách nhưng đầy lòng nhiệt huyết của các thế hệ thầy cô.',
-    images: [
-      'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80',
-    ],
+    images: ['a4'], // ảnh thật trong public/img/
     videos: [],
   },
   {
@@ -67,14 +63,14 @@ export const DEFAULT_POSTS = [
     title: 'Tâm sự tuổi hồng - Mãi nhớ Hoàng Văn Thụ',
     content:
       'Ba năm cấp ba trôi qua nhanh như một giấc mơ. Chúc cho mái trường luôn ngập tràn thành công và các bạn luôn giữ mãi ngọn lửa nhiệt huyết!',
-    images: [
-      'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
-    ],
+    images: ['a7'], // ảnh thật trong public/img/
     videos: [],
   },
 ];
 
 // Keys lưu localStorage (giống bản index37 để giữ dữ liệu cũ nếu có)
+export const APP_VERSION = '2';
+
 export const LS_POSTS_KEY = 'hvt_v37_posts';
 export const LS_BANNER_KEY = 'hvt_banner_img';
 
@@ -110,7 +106,7 @@ export function getYouTubeThumbnail(url) {
   if (ytMatch && ytMatch[2].length === 11) {
     return `https://img.youtube.com/vi/${ytMatch[2]}/hqdefault.jpg`;
   }
-  return 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80';
+  return '/img/a2-900.jpg'; // ảnh thật của trường thay ảnh minh họa
 }
 
 // Kiểm tra mật khẩu admin (mã hóa nhị phân như bản gốc: "hvt admin")
@@ -167,7 +163,10 @@ export function savePosts(posts) {
 }
 
 export function loadBanner() {
-  return localStorage.getItem(LS_BANNER_KEY) || DEFAULT_BANNER;
+  const saved = localStorage.getItem(LS_BANNER_KEY);
+  // Ảnh người dùng lưu có thể là link Drive cũ đã hỏng -> giữ nguyên;
+  // nếu chưa từng lưu thì dùng banner mặc định kèm cache-buster theo version.
+  return saved || `${DEFAULT_BANNER}?v=${APP_VERSION}`;
 }
 
 export function saveBanner(url) {
