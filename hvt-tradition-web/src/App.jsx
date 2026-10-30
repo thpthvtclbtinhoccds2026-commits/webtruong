@@ -5,19 +5,16 @@ import Filters from './components/Filters.jsx';
 import { TimelineView, MemoryGrid, PostCard, HomeIntro } from './components/PostViews.jsx';
 import LoginModal from './components/LoginModal.jsx';
 import AdminDashboard from './components/AdminDashboard.jsx';
+import PostFormModal from './components/PostFormModal.jsx';
+import { normalizeYear, SCHOOL } from './data.js';
 import {
-  DEFAULT_POSTS,
-  DEFAULT_BANNER,
-  normalizeYear,
-  loadPosts,
-  savePosts,
-  loadBanner,
-  saveBanner,
-  clearBanner,
-  SCHOOL,
-} from './data.js';
+  SEED_DATA,
+  loadSiteData,
+  saveSiteData,
+  replaceSiteData,
+} from './storage.js';
 
-const NO_YEAR_FILTER_TABS = ['Lịch Sử Hình Thành', 'Ký ước trường xưa'];
+const NO_YEAR_FILTER_TABS = ['Lịch Sử Hình Thành', 'Ký ức trường xưa'];
 
 /** Khối hiển thị khi một chuyên mục chưa có bài viết. */
 function EmptyState({ tab }) {
@@ -39,12 +36,14 @@ function EmptyState({ tab }) {
 }
 
 export default function App() {
-  const [posts, setPosts] = useState(loadPosts);
-  const [bannerImage, setBannerImage] = useState(loadBanner);
+  const [site, setSite] = useState(loadSiteData);
+  const posts = site.posts;
+  const bannerImage = site.banner;
   const [currentTab, setCurrentTab] = useState('Trang Chủ');
   const [currentYearFilter, setCurrentYearFilter] = useState('Tất cả');
   const [showLogin, setShowLogin] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [addingPost, setAddingPost] = useState(false);
 
   // Nút menu trên header (dispatch event) -> đổi tab
   useEffect(() => {
@@ -78,53 +77,52 @@ export default function App() {
     return filtered;
   }, [posts, currentTab, currentYearFilter]);
 
-  // ===== Admin actions =====
+  // ===== Admin actions (mọi thay đổi đều lưu tập trung qua storage.js) =====
+  const commit = (next) => {
+    const saved = saveSiteData(next);
+    setSite(saved);
+    return saved;
+  };
+
   const openAdminPortal = () => {
-    if (sessionStorage.getItem('hvt_logged') === 'true') {
-      setShowDashboard(true);
-    } else {
-      setShowLogin(true);
-    }
+    if (sessionStorage.getItem('hvt_logged') === 'true') setShowDashboard(true);
+    else setShowLogin(true);
   };
 
-  const handleUpdateBanner = (url) => {
-    setBannerImage(url);
-    saveBanner(url);
+  const handleUpdateBanner = (url) => commit({ ...site, banner: url });
+
+  const handleAddPost = () => {
+    setShowDashboard(false);
+    setAddingPost(true);
   };
 
-  const handleAddPost = (post) => {
-    const next = [post, ...posts];
-    setPosts(next);
-    savePosts(next);
+  const handleSaveNewPost = (post) => {
+    commit({ ...site, posts: [post, ...site.posts] });
+    setAddingPost(false);
+    setShowDashboard(true);
   };
 
-  const handleUpdatePost = (idx, data) => {
-    const next = posts.map((p, i) => (i === idx ? { ...p, ...data } : p));
-    setPosts(next);
-    savePosts(next);
-  };
+  const handleUpdatePost = (updated) =>
+    commit({ ...site, posts: site.posts.map((p) => (p.id === updated.id ? updated : p)) });
 
-  const handleDeletePost = (id) => {
-    if (confirm('Hành động này sẽ xóa mục này. Bạn có chắc chắn không?')) {
-      const next = posts.filter((p) => p.id !== id);
-      setPosts(next);
-      savePosts(next);
-    }
-  };
+  const handleDeletePost = (id) =>
+    commit({ ...site, posts: site.posts.filter((p) => p.id !== id) });
 
-  const handleResetData = () => {
-    if (confirm('Hành động này sẽ khôi phục lại dữ liệu mẫu ban đầu. Bạn có chắc chắn không?')) {
-      setPosts(DEFAULT_POSTS);
-      setBannerImage(DEFAULT_BANNER);
-      savePosts(DEFAULT_POSTS);
-      clearBanner();
-      setShowDashboard(false);
-    }
+  const handleUpdateSchool = (school) => commit({ ...site, school });
+
+  /** Khôi phục nội dung mẫu ban đầu (không đụng tới mật khẩu quản trị). */
+  const handleResetData = () =>
+    replaceSiteData({ ...structuredClone(SEED_DATA), password: localStorage.getItem('hvt_admin_password_v1') });
+
+  /** Import file JSON dự phòng -> reload để mọi ảnh/link được đọc lại từ đầu. */
+  const handleReplaceAll = (data) => {
+    replaceSiteData(data);
+    window.location.reload();
   };
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header onOpenAdmin={openAdminPortal} />
+      <Header logoRef={site.logo} currentTab={currentTab} onNavigate={setCurrentTab} onOpenAdmin={openAdminPortal} />
 
       <Banner bannerImage={bannerImage} />
 
@@ -142,7 +140,7 @@ export default function App() {
             <EmptyState tab={currentTab} />
           ) : currentTab === 'Lịch Sử Hình Thành' ? (
             <TimelineView posts={filteredPosts} />
-          ) : currentTab === 'Ký ước trường xưa' ? (
+          ) : currentTab === 'Ký ức trường xưa' ? (
             <MemoryGrid posts={filteredPosts} />
           ) : (
             <div className="space-y-10">
@@ -174,15 +172,15 @@ export default function App() {
             </p>
             <p className="mt-1 text-sm">
               <span className="font-semibold text-white">SĐT/Zalo:</span>{' '}
-              <a className="underline underline-offset-4 hover:text-white" href="tel:+84988000000">
-                0988.xxx.xxx
+              <a className="underline underline-offset-4 hover:text-white" href={`tel:${String(SCHOOL.contactPhone || '').replace(/\s+/g, '')}`}>
+                {SCHOOL.contactPhone}
               </a>
             </p>
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Bản quyền</p>
             <p className="mt-3 text-sm leading-relaxed text-blue-100/80">
-              Website số hóa phòng truyền thống, được xây dựng và duy trì bởi Câu lạc bộ Tin học nhà trường.
+              {SCHOOL.credit}
               Toàn bộ tư liệu, hình ảnh thuộc quyền quản lý của {SCHOOL.shortName}.
             </p>
           </div>
@@ -204,14 +202,19 @@ export default function App() {
 
       {showDashboard && (
         <AdminDashboard
-          posts={posts}
-          bannerImage={bannerImage}
+          site={site}
           onClose={() => setShowDashboard(false)}
-          onUpdateBanner={handleUpdateBanner}
+          onLogout={() => {
+            sessionStorage.removeItem('hvt_logged');
+            setShowDashboard(false);
+          }}
+          onChangeBanner={handleUpdateBanner}
           onAddPost={handleAddPost}
           onUpdatePost={handleUpdatePost}
           onDeletePost={handleDeletePost}
-          onResetData={handleResetData}
+          onChangeSchool={handleUpdateSchool}
+          onReplaceAll={handleReplaceAll}
+          onResetSeed={handleResetData}
         />
       )}
     </div>

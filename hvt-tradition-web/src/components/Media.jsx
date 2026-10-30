@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatGoogleDriveUrl, getYouTubeThumbnail } from '../data.js';
 import { imageSrc, PLACEHOLDER } from '../assets/images.js';
+import SmartImage from './SmartImage.jsx';
 import Icon from './Icons.jsx';
 
 /** Tôn trọng cài đặt "giảm chuyển động" của hệ điều hành. */
@@ -44,11 +45,13 @@ function Lightbox({ images, index, onClose, onIndex }) {
       aria-label="Xem ảnh tư liệu toàn màn hình"
       onClick={onClose}
     >
-      <img
-        src={images[index].full}
+      <SmartImage
+        src={images[index].ref ?? images[index].full}
+        size="full"
+        eager
         alt={images[index].alt}
-        className={`max-h-[78vh] max-w-full rounded object-contain shadow-lift ${reduced ? '' : 'animate-rise'}`}
-        onClick={(e) => e.stopPropagation()}
+        className={`max-h-[78vh] w-auto rounded bg-transparent ${reduced ? '' : 'animate-rise'}`}
+        imgClassName="object-contain"
       />
       <div className="mt-4 flex items-center gap-3 text-white" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="btn-ghost !bg-white/10 !border-white/25 !text-white" onClick={() => onIndex((index - 1 + total) % total)}>
@@ -99,6 +102,16 @@ export function ImageSlider({ images, alt = 'Ảnh tư liệu nhà trường' })
       >
         {images.map((img, i) => (
           <div key={i} className="flex w-full shrink-0 items-center justify-center bg-white p-4">
+            {String(img.ref || '').startsWith('idb:') ? (
+              <SmartImage
+                src={img.ref}
+                size="card"
+                eager={i === 0}
+                alt={`${alt} — ảnh ${i + 1}/${count}`}
+                className="archive-frame max-h-[480px] w-auto max-w-full"
+                imgClassName="cursor-zoom-in object-contain"
+              />
+            ) : (
             <picture>
               {img.thumb && img.thumb !== img.card && (
                 <source media="(max-width: 639px)" srcSet={img.thumb} />
@@ -126,6 +139,7 @@ export function ImageSlider({ images, alt = 'Ảnh tư liệu nhà trường' })
                 onClick={() => setZoomed(true)}
               />
             </picture>
+            )}
           </div>
         ))}
       </div>
@@ -234,18 +248,15 @@ function VideoCard({ url, title }) {
 }
 
 export function MediaContent({ post }) {
-  // Mỗi ảnh -> object {card, thumb, full, alt}; key cục bộ (a1..a7) tự nối cỡ.
-  const images = (post.images || [])
-    .map(formatGoogleDriveUrl)
-    .map((src, i) => {
-      const key = guessKey(src);
-      return {
-        card: src,
-        thumb: key ? imageSrc(key, 'thumb') : src,
-        full: key ? imageSrc(key, 'full') : src,
-        alt: `${post.title || 'Ảnh tư liệu'} — ảnh ${i + 1}`,
-      };
-    });
+  // Mỗi ảnh -> object {card, thumb, full, alt}.
+  // card/thumb/full giữ nguyên REF (key repo / link / idb:...) — SmartImage tự phân giải.
+  const images = (post.images || []).map((src, i) => ({
+    ref: src,
+    card: formatGoogleDriveUrl(src),
+    thumb: guessKey(src) ? imageSrc(guessKey(src), 'thumb') : formatGoogleDriveUrl(src),
+    full: guessKey(src) ? imageSrc(guessKey(src), 'full') : formatGoogleDriveUrl(src),
+    alt: `${post.title || 'Ảnh tư liệu'} — ảnh ${i + 1}`,
+  }));
   const videos = post.videos || [];
 
   if (images.length === 0 && videos.length === 0) {

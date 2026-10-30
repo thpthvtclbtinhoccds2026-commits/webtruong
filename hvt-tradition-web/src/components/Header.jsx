@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Icon, { SchoolSeal } from './Icons.jsx';
-import { IMG } from '../assets/images.js';
+import SmartImage from './SmartImage.jsx';
 import { CATEGORIES, SCHOOL } from '../data.js';
 
 export default function Header({ currentTab, onNavigate, onOpenAdmin }) {
@@ -32,17 +32,14 @@ export default function Header({ currentTab, onNavigate, onOpenAdmin }) {
           onClick={() => go('Trang Chủ')}
           className="flex shrink-0 items-center gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-white/10"
         >
-          {IMG.logoHvt ? (
-            <img
-              src={IMG.logoHvt}
-              alt="Logo trường THPT Hoàng Văn Thụ"
-              width={44}
-              height={44}
-              className="h-11 w-11 shrink-0 rounded-full bg-white/95 object-contain p-1 shadow-sm"
-            />
-          ) : (
-            <SchoolSeal className="h-11 w-11 text-[13px]" />
-          )}
+          <SmartImage
+            src={logoRef}
+            size="thumb"
+            alt={`Logo ${SCHOOL.shortName}`}
+            eager
+            className="h-11 w-11 shrink-0 rounded-full bg-white/95 p-1 shadow-sm"
+            imgClassName="object-contain"
+          />
           <span className="leading-tight">
             <span className="block font-serif text-sm font-bold md:text-lg">
               Phòng Truyền Thống Online

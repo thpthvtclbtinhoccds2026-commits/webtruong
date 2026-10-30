@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { CATEGORIES, formatGoogleDriveUrl, SCHOOL } from '../data.js';
-import { imageSrc } from '../assets/images.js';
+import { CATEGORIES, SCHOOL } from '../data.js';
+import SmartImage from './SmartImage.jsx';
 import { MediaContent } from './Media.jsx';
 import Icon from './Icons.jsx';
 
@@ -113,7 +113,7 @@ export function TimelineView({ posts }) {
         className="no-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto pb-3 outline-offset-4"
       >
         {sorted.map((post, idx) => {
-          const imgs = (post.images || []).map((x) => imageSrc(formatGoogleDriveUrl(x), 'thumb'));
+          const firstImg = (post.images || [])[0];
           return (
             <li key={post.id} className="relative flex min-w-[290px] max-w-[340px] shrink-0 snap-start flex-col md:min-w-[340px]">
               {/* Trục + nút mốc */}
@@ -133,16 +133,14 @@ export function TimelineView({ posts }) {
                   <h3 className="mt-3 font-serif text-lg font-bold leading-snug text-primary">{post.title}</h3>
                   <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.content}</p>
                 </div>
-                {imgs.length > 0 && (
-                  <figure className="archive-frame mt-4 overflow-hidden">
-                    <img
-                      src={imgs[0]}
+                {firstImg && (
+                  <figure className="archive-frame mt-4 h-40 overflow-hidden">
+                    <SmartImage
+                      src={firstImg}
+                      size="thumb"
                       alt={`Tư liệu năm ${post.year}: ${post.title}`}
-                      loading="lazy"
-                      decoding="async"
-                      width={480}
-                      height={360}
-                      className="h-40 w-full object-cover"
+                      className="h-full w-full"
+                      imgClassName="object-cover"
                     />
                   </figure>
                 )}
@@ -155,24 +153,21 @@ export function TimelineView({ posts }) {
   );
 }
 
-// ===== 2. LƯỚI KỶ NIỆM cho mục "Ký ước trường xưa" =====
+// ===== 2. LƯỚI KỶ NIỆM cho mục "Ký ức trường xưa" =====
 export function MemoryGrid({ posts }) {
   return (
     <section aria-label="Góc ký ức các khóa" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {posts.map((post) => {
-        const imgs = (post.images || []).map((x) => imageSrc(formatGoogleDriveUrl(x)));
-        const mainImg = imgs[0] ?? KY_UOC_FALLBACK_IMG;
+        const mainImg = (post.images || [])[0] ?? KY_UOC_FALLBACK_IMG;
         return (
           <Reveal key={post.id} as="article" className="flex flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift">
             <div className="relative h-56 overflow-hidden">
-              <img
+              <SmartImage
                 src={mainImg}
+                size="card"
                 alt={`Kỷ niệm ${post.year}: ${post.title}`}
-                loading="lazy"
-                decoding="async"
-                width={900}
-                height={675}
-                className="h-full w-full object-cover transition duration-500 hover:scale-[1.04]"
+                className="h-full w-full"
+                imgClassName="object-cover transition duration-500 hover:scale-[1.04]"
               />
               <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow">
                 {post.year}
@@ -278,7 +273,7 @@ export function PostCard({ post, currentTab }) {
 // ===== 4. TRANG CHỦ: lời dẫn + mục lục chuyên mục =====
 export function HomeIntro({ posts, onSelectTab }) {
   const milestones = posts.filter((p) => p.category === 'Lịch Sử Hình Thành');
-  const memories = posts.filter((p) => p.category === 'Ký ước trường xưa');
+  const memories = posts.filter((p) => p.category === 'Ký ức trường xưa');
   const teachers = posts.filter((p) => p.category === 'Thầy Cô Tiêu Biểu');
 
   const stats = [
