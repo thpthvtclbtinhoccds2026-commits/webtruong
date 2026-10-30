@@ -80,15 +80,20 @@ export const LS_BANNER_KEY = 'hvt_banner_img';
 
 // ===== Tiện ích =====
 
-// Chuyển link Google Drive sang link xem ảnh trực tiếp
+// Chuyển link Google Drive sang link xem ảnh trực tiếp.
+// Đồng thời cho phép dùng key ảnh cục bộ đã khai báo trong src/assets/images.js
+// (vd: "bannerDinhLy") hoặc đường dẫn tĩnh trong public/ (vd: "/img/...").
+import { resolveImage } from './assets/images.js';
+
 export function formatGoogleDriveUrl(url) {
   if (!url) return '';
-  url = url.trim();
+  url = String(url).trim();
   const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (match && match[1]) {
     return `https://lh3.googleusercontent.com/d/${match[1]}`;
   }
-  return url;
+  // key ảnh local / ảnh trong public/ -> đường dẫn thật sau khi build
+  return resolveImage(url);
 }
 
 export function normalizeYear(str) {

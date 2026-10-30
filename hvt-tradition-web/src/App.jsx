@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Header from './components/Header.jsx';
 import Banner from './components/Banner.jsx';
 import Filters from './components/Filters.jsx';
-import { TimelineView, MemoryGrid, PostCard } from './components/PostViews.jsx';
+import { TimelineView, MemoryGrid, PostCard, HomeIntro } from './components/PostViews.jsx';
 import LoginModal from './components/LoginModal.jsx';
 import AdminDashboard from './components/AdminDashboard.jsx';
 import {
@@ -14,9 +14,29 @@ import {
   loadBanner,
   saveBanner,
   clearBanner,
+  SCHOOL,
 } from './data.js';
 
 const NO_YEAR_FILTER_TABS = ['Lịch Sử Hình Thành', 'Ký ước trường xưa'];
+
+/** Khối hiển thị khi một chuyên mục chưa có bài viết. */
+function EmptyState({ tab }) {
+  return (
+    <div
+      role="status"
+      className="rounded-xl border border-dashed border-stone-300 bg-white/70 px-6 py-16 text-center"
+    >
+      <p className="font-serif text-lg font-bold text-primary">
+        Chuyên mục “{tab}” chưa có bài viết
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-stone-500">
+        Đây là chỗ trống dành cho tư liệu thật của nhà trường: ảnh chụp các thế hệ thầy trò,
+        giấy khen, video hoạt động… Bạn có thể thêm nội dung ở chế độ Quản Trị, hoặc thả file
+        ảnh vào thư mục <code className="rounded bg-stone-100 px-1">src/assets/img/</code> của repo.
+      </p>
+    </div>
+  );
+}
 
 export default function App() {
   const [posts, setPosts] = useState(loadPosts);
@@ -117,32 +137,59 @@ export default function App() {
           onChangeYear={setCurrentYearFilter}
         />
 
-        {filteredPosts.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-dashed">
-            <p className="text-slate-400">Chưa có nội dung nào cho mục này.</p>
-          </div>
-        ) : currentTab === 'Lịch Sử Hình Thành' ? (
-          <TimelineView posts={filteredPosts} />
-        ) : currentTab === 'Ký ước trường xưa' ? (
-          <MemoryGrid posts={filteredPosts} />
-        ) : (
-          <div className="space-y-10">
-            {filteredPosts.map((post) => (
-              <PostCard key={post.id} post={post} currentTab={currentTab} />
-            ))}
-          </div>
-        )}
+        <div id="panel-noi-dung" role="tabpanel" aria-labelledby={`tab-${currentTab}`} tabIndex={-1}>
+          {filteredPosts.length === 0 ? (
+            <EmptyState tab={currentTab} />
+          ) : currentTab === 'Lịch Sử Hình Thành' ? (
+            <TimelineView posts={filteredPosts} />
+          ) : currentTab === 'Ký ước trường xưa' ? (
+            <MemoryGrid posts={filteredPosts} />
+          ) : (
+            <div className="space-y-10">
+              {currentTab === 'Trang Chủ' && (
+                <HomeIntro posts={posts} onSelectTab={setCurrentTab} />
+              )}
+              {filteredPosts.map((post) => (
+                <PostCard key={post.id} post={post} currentTab={currentTab} />
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-slate-900 text-white py-8 px-4 mt-16 text-center text-sm">
-        <p className="font-semibold">
-          Trường THPT Hoàng Văn Thụ - Phường Vàng Danh, Tỉnh Quảng Ninh
-        </p>
-        <p className="text-slate-400 mt-1">
-          Phòng truyền thống online quản trị bởi Admin nhà trường. |{' '}
-          <span className="text-accent font-medium">SĐT/Zalo liên hệ Admin: 0988.xxx.xxx</span>
-        </p>
+      <footer className="no-print mt-16 border-t-4 border-accent bg-primary text-blue-50">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <p className="font-serif text-lg font-bold text-white">{SCHOOL.name}</p>
+            <p className="mt-2 text-sm leading-relaxed text-blue-100/80">
+              {SCHOOL.location} — nơi nuôi dưỡng ước mơ của nhiều thế hệ học sinh.{' '}
+              {`Thành lập năm ${SCHOOL.foundedYear}.`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Liên hệ</p>
+            <p className="mt-3 text-sm text-blue-100/80">
+              Phòng truyền thống online do Ban Giám hiệu quản trị.
+            </p>
+            <p className="mt-1 text-sm">
+              <span className="font-semibold text-white">SĐT/Zalo:</span>{' '}
+              <a className="underline underline-offset-4 hover:text-white" href="tel:+84988000000">
+                0988.xxx.xxx
+              </a>
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Bản quyền</p>
+            <p className="mt-3 text-sm leading-relaxed text-blue-100/80">
+              Website số hóa phòng truyền thống, được xây dựng và duy trì bởi Câu lạc bộ Tin học nhà trường.
+              Toàn bộ tư liệu, hình ảnh thuộc quyền quản lý của {SCHOOL.shortName}.
+            </p>
+          </div>
+        </div>
+        <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-blue-100/60">
+          © {new Date().getFullYear()} {SCHOOL.shortName}. Lưu giữ truyền thống hiếu học, sáng tạo và tự hào.
+        </div>
       </footer>
 
       {showLogin && (
