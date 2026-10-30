@@ -1,80 +1,85 @@
-import { useState } from 'react';
-import { CATEGORIES } from '../data.js';
+import { useEffect, useState } from 'react';
+import Icon, { SchoolSeal } from './Icons.jsx';
+import { CATEGORIES, SCHOOL } from '../data.js';
 
-export default function Header({ onOpenAdmin }) {
+export default function Header({ currentTab, onNavigate, onOpenAdmin }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
-    <header className="bg-primary text-white shadow-md sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center gap-4">
-        <div className="flex items-center space-x-3 shrink-0">
-          <div className="bg-accent text-white font-bold p-2 rounded-lg text-lg">HVT</div>
-          <div>
-            <h1 className="font-bold text-sm md:text-base tracking-tight whitespace-nowrap leading-tight">
-              THPT HOÀNG VĂN THỤ
-            </h1>
-            <p className="text-[11px] text-slate-200 whitespace-nowrap">
-              Phường Vàng Danh, Quảng Ninh
-            </p>
-          </div>
-        </div>
+  // Đóng menu mobile khi bấm Esc
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const onKey = (e) => e.key === 'Escape' && setMobileOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
 
-        {/* MENU TRANG CON (desktop) */}
-        <nav className="hidden xl:flex space-x-2 text-xs font-medium">
+  const go = (cat) => {
+    onNavigate(cat);
+    setMobileOpen(false);
+  };
+
+  return (
+    <header className="sticky top-0 z-40 border-b-4 border-accent bg-primary text-white shadow-md">
+      {/* Dòng trên: tên trường đầy đủ — kiểu bảng hiệu phòng truyền thống */}
+      <div className="bg-blue-950/60 text-center px-4 py-1.5 text-[11px] sm:text-xs font-medium tracking-wide text-blue-100">
+        {SCHOOL.name.toUpperCase()} — {SCHOOL.location.toUpperCase()}
+      </div>
+
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
+        <button
+          type="button"
+          onClick={() => go('Trang Chủ')}
+          className="flex shrink-0 items-center gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-white/10"
+        >
+          <SchoolSeal className="h-11 w-11 text-[13px]" />
+          <span className="leading-tight">
+            <span className="block font-serif text-sm font-bold md:text-lg">
+              Phòng Truyền Thống Online
+            </span>
+            <span className="block text-[11px] text-blue-200">Không gian số hóa truyền thống nhà trường</span>
+          </span>
+        </button>
+
+        {/* MENU CHUYÊN MỤC (desktop) */}
+        <nav aria-label="Chuyên mục chính" className="hidden 2xl:flex items-center gap-1 text-[13px]">
           {CATEGORIES.map((cat) => (
             <a
-              key={cat}
-              href="#"
+              key={cat.id}
+              href={`#${cat.id}`}
+              aria-current={currentTab === cat.id ? 'page' : undefined}
               onClick={(e) => {
                 e.preventDefault();
-                window.dispatchEvent(new CustomEvent('hvt:filter-tab', { detail: cat }));
+                go(cat.id);
               }}
-              className="whitespace-nowrap px-2 py-1 rounded hover:text-accent transition"
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 transition ${
+                currentTab === cat.id
+                  ? 'bg-accent font-semibold text-white'
+                  : 'text-blue-100 hover:bg-white/10 hover:text-white'
+              }`}
             >
-              {cat}
+              <Icon name={cat.icon} size={16} />
+              {cat.id}
             </a>
           ))}
         </nav>
 
-        <div className="shrink-0 flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
+            type="button"
             onClick={() => setMobileOpen((v) => !v)}
-            className="xl:hidden bg-blue-900 border border-white/20 p-2 rounded-lg text-white hover:bg-blue-800 transition"
-            aria-label="Mở menu"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav"
+            className="grid h-11 w-11 place-items-center rounded-lg border border-white/25 bg-blue-900 transition hover:bg-blue-800 2xl:hidden"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
+            <Icon name={mobileOpen ? 'close' : 'menu'} size={22} />
+            <span className="sr-only">{mobileOpen ? 'Đóng menu' : 'Mở menu'}</span>
           </button>
           <button
+            type="button"
             onClick={onOpenAdmin}
-            className="bg-accent hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg text-xs md:text-sm font-semibold shadow transition flex items-center gap-1.5 whitespace-nowrap"
+            className="hidden btn-accent focus-ring sm:inline-flex px-3.5 py-2.5 text-xs md:text-sm"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
+            <Icon name="lock" size={16} />
             Quản Trị Admin
           </button>
         </div>
@@ -82,22 +87,38 @@ export default function Header({ onOpenAdmin }) {
 
       {/* MENU MOBILE */}
       {mobileOpen && (
-        <div className="xl:hidden border-t border-white/10 bg-blue-950 px-4 py-3 flex flex-col text-sm">
-          {CATEGORIES.map((cat) => (
-            <a
-              key={cat}
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                window.dispatchEvent(new CustomEvent('hvt:filter-tab', { detail: cat }));
-                setMobileOpen(false);
-              }}
-              className="py-1.5 px-2 rounded hover:bg-blue-900 transition text-white"
-            >
-              {cat}
-            </a>
-          ))}
-        </div>
+        <nav
+          id="mobile-nav"
+          aria-label="Chuyên mục chính (mobile)"
+          className="border-t border-white/10 bg-blue-950 px-4 py-3 2xl:hidden"
+        >
+          <ul className="flex flex-col text-sm">
+            {CATEGORIES.map((cat) => (
+              <li key={cat.id}>
+                <a
+                  href={`#${cat.id}`}
+                  aria-current={currentTab === cat.id ? 'page' : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    go(cat.id);
+                  }}
+                  className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-3 py-2.5 transition ${
+                    currentTab === cat.id ? 'bg-accent font-semibold text-white' : 'text-blue-100 hover:bg-blue-900'
+                  }`}
+                >
+                  <Icon name={cat.icon} size={18} />
+                  {cat.id}
+                </a>
+              </li>
+            ))}
+            <li className="mt-2 sm:hidden">
+              <button type="button" onClick={() => { setMobileOpen(false); onOpenAdmin(); }} className="w-full btn-accent focus-ring">
+                <Icon name="lock" size={16} />
+                Quản Trị Admin
+              </button>
+            </li>
+          </ul>
+        </nav>
       )}
     </header>
   );

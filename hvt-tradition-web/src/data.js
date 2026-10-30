@@ -1,14 +1,28 @@
 // ===== Dữ liệu & hằng số của Phòng Truyền Thống Online - THPT Hoàng Văn Thụ =====
 
+export const SCHOOL = {
+  name: 'Trường THPT Hoàng Văn Thụ',
+  shortName: 'THPT Hoàng Văn Thụ',
+  location: 'Phường Vàng Danh, Tỉnh Quảng Ninh',
+  foundedYear: 1984,
+};
+
+/** Icon SVG (tên) cho từng chuyên mục — thay cho emoji. */
 export const CATEGORIES = [
-  'Trang Chủ',
-  'Lịch Sử Hình Thành',
-  'Thầy Cô Tiêu Biểu',
-  'Thành Tích & Khen Thưởng',
-  'Hoạt Động & CLB',
-  'Video & Tư Liệu',
-  'Ký ước trường xưa',
+  { id: 'Trang Chủ', icon: 'home' },
+  { id: 'Lịch Sử Hình Thành', icon: 'timeline' },
+  { id: 'Thầy Cô Tiêu Biểu', icon: 'teacher' },
+  { id: 'Thành Tích & Khen Thưởng', icon: 'award' },
+  { id: 'Hoạt Động & CLB', icon: 'club' },
+  { id: 'Video & Tư Liệu', icon: 'video' },
+  { id: 'Ký ước trường xưa', icon: 'letter' },
 ];
+
+/** Tên chuyên mục thuần (dùng cho form admin & bộ lọc). */
+export const CATEGORY_NAMES = CATEGORIES.map((c) => c.id);
+
+/** Các tab không áp dụng bộ lọc năm học. */
+export const NO_YEAR_FILTER_TABS = ['Lịch Sử Hình Thành', 'Ký ước trường xưa'];
 
 export const SCHOOL_YEARS = [
   'Tất cả',
@@ -126,10 +140,21 @@ export function loadPosts() {
     const saved =
       JSON.parse(localStorage.getItem(LS_POSTS_KEY)) ||
       JSON.parse(localStorage.getItem('hvt_v34_posts'));
-    return saved ?? DEFAULT_POSTS;
+    return Array.isArray(saved) && saved.length ? saved : DEFAULT_POSTS;
   } catch {
     return DEFAULT_POSTS;
   }
+}
+
+/** Đếm số mốc / bài viết trong một chuyên mục (dùng cho trang chủ & tab). */
+export function countByCategory(posts, category) {
+  return posts.filter((p) => p.category === category).length;
+}
+
+/** Suy ra khóa gần nhất từ năm học hiện tại và năm thành lập. */
+export function estimateCurrentKhoa(yearsSinceFounding = null) {
+  const base = yearsSinceFounding ?? new Date().getFullYear() - SCHOOL.foundedYear + 1;
+  return `Khóa K${Math.max(1, base)}`;
 }
 
 export function savePosts(posts) {
