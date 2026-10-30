@@ -1,205 +1,334 @@
-import { useRef } from 'react';
-import { formatGoogleDriveUrl } from '../data.js';
+import { useEffect, useRef, useState } from 'react';
+import { CATEGORIES, formatGoogleDriveUrl, SCHOOL } from '../data.js';
 import { MediaContent } from './Media.jsx';
+import Icon from './Icons.jsx';
 
 const KY_UOC_FALLBACK_IMG =
   'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80';
 
-// 1. TIMELINE NGANG CHO MỤC "Lịch Sử Hình Thành"
+/** Hiện dần khi cuộn (IntersectionObserver), tự tắt nếu reduced-motion. */
+function useReveal() {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+      setVisible(true);
+      return undefined;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => entry.isIntersecting && setVisible(true),
+      { threshold: 0.12 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return [ref, visible];
+}
+
+function Reveal({ children, className = '', as: Tag = 'div' }) {
+  const [ref, visible] = useReveal();
+  return (
+    <Tag ref={ref} className={`reveal ${visible ? 'is-visible' : ''} ${className}`}>
+      {children}
+    </Tag>
+  );
+}
+
+/** Trích năm (số) từ chuỗi "năm học" để sắp xếp dòng thời gian đúng thứ tự. */
+function extractYear(str) {
+  const m = String(str || '').match(/\d{4}/);
+  return m ? Number(m[0]) : null;
+}
+
+// ===== 1. DÒNG THỜI GIAN cho mục "Lịch Sử Hình Thành" =====
 export function TimelineView({ posts }) {
   const scrollRef = useRef(null);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
 
-  const scrollTimeline = (direction) => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: direction * 380, behavior: 'smooth' });
-    }
+  const sorted = [...posts].sort(
+    (a, b) => (extractYear(a.year) ?? 9999) - (extractYear(b.year) ?? 9999) || a.id - b.id,
+  );
+
+  const updateArrows = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setAtStart(el.scrollLeft <= 4);
+    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    updateArrows();
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    el.addEventListener('scroll', updateArrows, { passive: true });
+    window.addEventListener('resize', updateArrows);
+    return () => {
+      el.removeEventListener('scroll', updateArrows);
+      window.removeEventListener('resize', updateArrows);
+    };
+  }, [posts.length]);
+
+  const scrollBy = (dir) => scrollRef.current?.scrollBy({ left: dir * 360, behavior: 'smooth' });
+
+  const onKey = (e) => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); scrollBy(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); scrollBy(-1); }
   };
 
   return (
-    <div className="bg-blue-50/40 p-6 rounded-2xl border border-blue-100 shadow-inner">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-primary text-lg">
-          ⏳ Dòng Thời Gian Lịch Sử Phát Triển Nhà Trường
-        </h3>
-        <div className="flex gap-2">
-          <button
-            onClick={() => scrollTimeline(-1)}
-            className="bg-primary text-white w-9 h-9 rounded-full flex items-center justify-center shadow hover:bg-blue-900 transition"
-            aria-label="Cuộn trái"
-          >
-            ❮
+    <section aria-labelledby="timeline-heading" className="rounded-2xl border border-stone-200 bg-white p-5 shadow-card sm:p-7">
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+            <Icon name="timeline" size={16} /> Dòng thời gian
+          </p>
+          <h2 id="timeline-heading" className="mt-1 font-serif text-xl font-bold text-primary sm:text-2xl">
+            Lịch sử phát triển của {SCHOOL.name}
+          </h2>
+          <p className="mt-1 text-sm text-stone-500">
+            {sorted.length} mốc son · kéo ngang hoặc dùng phím mũi tên để xem tiếp
+          </p>
+        </div>
+        <div className="no-print flex gap-2">
+          <button type="button" onClick={() => scrollBy(-1)} disabled={atStart}
+            className="grid h-11 w-11 place-items-center rounded-full border border-stone-300 bg-white text-primary transition hover:bg-stone-100 disabled:opacity-35 focus-ring">
+            <Icon name="chevronLeft" size={18} /><span className="sr-only">Cuộn về mốc cũ hơn</span>
           </button>
-          <button
-            onClick={() => scrollTimeline(1)}
-            className="bg-primary text-white w-9 h-9 rounded-full flex items-center justify-center shadow hover:bg-blue-900 transition"
-            aria-label="Cuộn phải"
-          >
-            ❯
+          <button type="button" onClick={() => scrollBy(1)} disabled={atEnd}
+            className="grid h-11 w-11 place-items-center rounded-full border border-stone-300 bg-white text-primary transition hover:bg-stone-100 disabled:opacity-35 focus-ring">
+            <Icon name="chevronRight" size={18} /><span className="sr-only">Cuộn tới mốc mới hơn</span>
           </button>
         </div>
-      </div>
-      <div ref={scrollRef} className="flex gap-6 overflow-x-auto no-scrollbar pb-4 pt-2 px-2 scroll-smooth">
-        {posts.map((post, idx) => {
-          const validImages = (post.images || []).map(formatGoogleDriveUrl);
-          const imgTag =
-            validImages.length > 0 ? (
-              <div className="mt-3 h-40 overflow-hidden rounded-lg border-2 border-blue-300 shadow-sm">
-                <img src={validImages[0]} alt="" className="w-full h-full object-cover" />
-              </div>
-            ) : null;
+      </header>
 
+      <ol
+        ref={scrollRef}
+        tabIndex={0}
+        onKeyDown={onKey}
+        aria-label="Các mốc thời gian tiêu biểu"
+        className="no-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto pb-3 outline-offset-4"
+      >
+        {sorted.map((post, idx) => {
+          const imgs = (post.images || []).map(formatGoogleDriveUrl);
           return (
-            <div
-              key={post.id}
-              className="min-w-[300px] md:min-w-[360px] max-w-[360px] flex-shrink-0 flex flex-col relative"
-            >
-              <div className="flex items-center my-6">
-                <div className="flex-1 border-t-2 border-primary"></div>
-                <div className="w-8 h-8 rounded-full bg-accent text-white font-bold flex items-center justify-center text-xs shadow-md z-10 mx-2">
+            <li key={post.id} className="relative flex min-w-[290px] max-w-[340px] shrink-0 snap-start flex-col md:min-w-[340px]">
+              {/* Trục + nút mốc */}
+              <div className="flex items-center gap-2 py-4">
+                <span className="h-px flex-1 bg-stone-300" aria-hidden="true" />
+                <span className="grid h-9 w-9 place-items-center rounded-full border-2 border-accent bg-white font-serif text-sm font-bold text-accent tabular-nums">
                   {idx + 1}
-                </div>
-                <div className="flex-1 border-t-2 border-primary"></div>
+                </span>
+                <span className="h-px flex-1 bg-stone-300" aria-hidden="true" />
               </div>
-              <div className="bg-white p-6 rounded-xl shadow-md border border-slate-200/80 flex-1 flex flex-col justify-between hover:shadow-xl transition">
+
+              <Reveal className="flex flex-1 flex-col justify-between rounded-xl border border-stone-200 bg-paper p-5 shadow-card transition hover:-translate-y-0.5 hover:shadow-lift">
                 <div>
-                  <span className="bg-accent/10 text-accent font-bold px-3 py-1 rounded-full text-xs uppercase inline-block mb-3">
-                    📅 Năm: {post.year}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-accent">
+                    <Icon name="timeline" size={13} /> Năm {post.year}
                   </span>
-                  <h3 className="text-lg font-bold text-primary mb-2">{post.title}</h3>
-                  <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
-                    {post.content}
-                  </p>
+                  <h3 className="mt-3 font-serif text-lg font-bold leading-snug text-primary">{post.title}</h3>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.content}</p>
                 </div>
-                {imgTag}
-              </div>
-            </div>
+                {imgs.length > 0 && (
+                  <figure className="archive-frame mt-4 overflow-hidden">
+                    <img src={imgs[0]} alt={`Tư liệu năm ${post.year}: ${post.title}`} loading="lazy"
+                      className="h-40 w-full object-cover" />
+                  </figure>
+                )}
+              </Reveal>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ol>
+    </section>
   );
 }
 
-// 2. LƯỚI CARD CHO MỤC "Ký ước trường xưa" (ảnh lớn phía trên, chữ phía dưới)
+// ===== 2. LƯỚI KỶ NIỆM cho mục "Ký ước trường xưa" =====
 export function MemoryGrid({ posts }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <section aria-label="Góc ký ức các khóa" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {posts.map((post) => {
-        const validImages = (post.images || []).map(formatGoogleDriveUrl);
-        const mainImg = validImages.length > 0 ? validImages[0] : KY_UOC_FALLBACK_IMG;
-
+        const imgs = (post.images || []).map(formatGoogleDriveUrl);
+        const mainImg = imgs[0] ?? KY_UOC_FALLBACK_IMG;
         return (
-          <div
-            key={post.id}
-            className="bg-white rounded-2xl shadow-md border border-slate-200/80 overflow-hidden flex flex-col justify-between hover:shadow-xl transition duration-300"
-          >
-            <div>
-              <div className="h-56 overflow-hidden relative">
-                <img
-                  src={mainImg}
-                  alt=""
-                  className="w-full h-full object-cover hover:scale-105 transition duration-500"
-                />
-                <span className="absolute top-3 left-3 bg-accent text-white text-[11px] font-bold px-3 py-1 rounded-full shadow">
-                  {post.year}
-                </span>
-              </div>
-              <div className="p-5">
-                <h4 className="text-lg font-bold text-primary mb-2">{post.title}</h4>
-                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
-                  {post.content}
-                </p>
-              </div>
+          <Reveal key={post.id} as="article" className="flex flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift">
+            <div className="relative h-56 overflow-hidden">
+              <img src={mainImg} alt={`Kỷ niệm ${post.year}: ${post.title}`} loading="lazy"
+                className="h-full w-full object-cover transition duration-500 hover:scale-[1.04]" />
+              <span className="absolute left-3 top-3 rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow">
+                {post.year}
+              </span>
             </div>
-            <div className="px-5 pb-5 pt-3 border-t bg-slate-50 flex justify-between items-center text-xs text-slate-500 font-medium">
-              <span>💌 Góc kỷ niệm</span>
-              <span className="text-primary font-bold">THPT Hoàng Văn Thụ</span>
+            <div className="flex flex-1 flex-col p-5">
+              <h3 className="font-serif text-lg font-bold leading-snug text-primary">{post.title}</h3>
+              <p className="mt-2 flex-1 whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.content}</p>
             </div>
-          </div>
+            <footer className="flex items-center justify-between border-t border-stone-200 bg-paper px-5 py-3 text-xs font-medium text-stone-500">
+              <span className="inline-flex items-center gap-1.5"><Icon name="letter" size={14} /> Góc kỷ niệm</span>
+              <span className="font-bold text-primary">{SCHOOL.shortName}</span>
+            </footer>
+          </Reveal>
         );
       })}
+    </section>
+  );
+}
+
+// ===== 3. CARD BÀI VIẾT (bố cục đổi theo chuyên mục) =====
+function Meta({ post, note }) {
+  return (
+    <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 pt-4 text-xs text-stone-500">
+      <span className="font-semibold text-primary">{SCHOOL.shortName}</span>
+      <span>{note}</span>
     </div>
   );
 }
 
-// 3. CARD DỌC CHO CÁC TAB CÒN LẠI (bố cục đổi theo tab)
-export function PostCard({ post, currentTab }) {
-  const media = <MediaContent post={post} />;
-
-  const badges = (extraClass = '') => (
-    <div className={`flex items-center gap-2 mb-2 flex-wrap ${extraClass}`}>
-      <span className="bg-accent/10 text-accent border border-accent/20 text-[11px] font-semibold px-2.5 py-0.5 rounded uppercase">
+function Badges({ post }) {
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-2">
+      <span className="rounded bg-accent/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent ring-1 ring-inset ring-accent/25">
         {post.category}
       </span>
-      <span className="bg-blue-50 text-primary border border-blue-100 text-[11px] font-bold px-2 py-0.5 rounded">
+      <span className="rounded bg-primary/5 px-2.5 py-1 text-[11px] font-bold text-primary ring-1 ring-inset ring-primary/15">
         Năm học: {post.year}
       </span>
     </div>
   );
+}
+
+export function PostCard({ post, currentTab }) {
+  const media = <MediaContent post={post} />;
 
   if (currentTab === 'Thành Tích & Khen Thưởng') {
-    // Chữ trái, ảnh phải
     return (
-      <div className="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200/80 grid grid-cols-1 lg:grid-cols-12 gap-0">
-        <div className="lg:col-span-5 p-6 md:p-8 flex flex-col justify-between border-r border-slate-100">
+      <Reveal as="article" className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-card lg:grid lg:grid-cols-12">
+        <div className="flex flex-col justify-between border-b border-stone-200 p-6 sm:p-8 lg:col-span-5 lg:border-b-0 lg:border-r">
           <div>
-            {badges()}
-            <h4 className="text-xl md:text-2xl font-bold text-primary mt-2 mb-3">{post.title}</h4>
-            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{post.content}</p>
+            <Badges post={post} />
+            <h3 className="mt-2 flex items-start gap-2 font-serif text-xl font-bold text-primary sm:text-2xl">
+              <Icon name="award" size={22} className="mt-0.5 shrink-0 text-accent" />
+              <span>{post.title}</span>
+            </h3>
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.content}</p>
           </div>
-          <div className="mt-6 pt-4 border-t text-xs text-slate-400 flex justify-between">
-            <span>THPT Hoàng Văn Thụ</span>
-            <span className="font-medium text-slate-500">Bảng vàng thành tích</span>
-          </div>
+          <Meta post={post} note="Bảng vàng thành tích" />
         </div>
-        <div className="lg:col-span-7 bg-slate-50">{media}</div>
-      </div>
+        <div className="bg-stone-50 lg:col-span-7">{media}</div>
+      </Reveal>
     );
   }
 
   if (currentTab === 'Hoạt Động & CLB') {
-    // Phong cách card nghệ thuật
     return (
-      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg overflow-hidden border-2 border-blue-100/80 grid grid-cols-1 lg:grid-cols-12 gap-0">
-        <div className="lg:col-span-6 border-r border-blue-100">{media}</div>
-        <div className="lg:col-span-6 p-6 md:p-8 flex flex-col justify-between bg-white/80 backdrop-blur">
+      <Reveal as="article" className="overflow-hidden rounded-xl border-2 border-primary/15 bg-white shadow-card lg:grid lg:grid-cols-12">
+        <div className="lg:col-span-6 lg:border-r lg:border-primary/10">{media}</div>
+        <div className="flex flex-col justify-between bg-gradient-to-br from-white to-paper p-6 sm:p-8 lg:col-span-6">
           <div>
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <span className="bg-primary text-white text-[11px] font-bold px-3 py-1 rounded-full uppercase shadow-sm">
-                ⭐ {post.category}
+            <div className="mb-3 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+                <Icon name="club" size={13} /> {post.category}
               </span>
-              <span className="bg-accent/10 text-accent font-bold px-3 py-1 rounded-full text-xs">
-                Năm học: {post.year}
-              </span>
+              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-bold text-accent">Năm học: {post.year}</span>
             </div>
-            <h4 className="text-xl md:text-2xl font-bold text-primary mt-2 mb-3">{post.title}</h4>
-            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{post.content}</p>
+            <h3 className="mt-2 font-serif text-xl font-bold text-primary sm:text-2xl">{post.title}</h3>
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.content}</p>
           </div>
-          <div className="mt-6 pt-4 border-t text-xs text-slate-400 flex justify-between items-center">
-            <span className="font-semibold text-primary">Đội ngũ CLB Nhà trường</span>
-            <span className="bg-blue-100 text-primary px-3 py-1 rounded-full font-bold">
-              Sáng tạo & Năng động
-            </span>
-          </div>
+          <Meta post={post} note="Sáng tạo & Năng động" />
         </div>
-      </div>
+      </Reveal>
     );
   }
 
-  // Mặc định: Ảnh trái, chữ phải
+  // Mặc định: ảnh trái, chữ phải
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200/80 grid grid-cols-1 lg:grid-cols-12 gap-0">
-      <div className="lg:col-span-7 border-r border-slate-100">{media}</div>
-      <div className="lg:col-span-5 p-6 md:p-8 flex flex-col justify-between">
+    <Reveal as="article" className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-card lg:grid lg:grid-cols-12">
+      <div className="lg:col-span-7 lg:border-r lg:border-stone-200">{media}</div>
+      <div className="flex flex-col justify-between p-6 sm:p-8 lg:col-span-5">
         <div>
-          {badges()}
-          <h4 className="text-xl md:text-2xl font-bold text-primary mt-2 mb-3">{post.title}</h4>
-          <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{post.content}</p>
+          <Badges post={post} />
+          <h3 className="mt-2 font-serif text-xl font-bold text-primary sm:text-2xl">{post.title}</h3>
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-stone-700">{post.content}</p>
         </div>
-        <div className="mt-6 pt-4 border-t text-xs text-slate-400 flex justify-between">
-          <span>THPT Hoàng Văn Thụ</span>
-          <span className="font-medium text-slate-500">Quản trị viên</span>
-        </div>
+        <Meta post={post} note="Ban quản trị phòng truyền thống" />
+      </div>
+    </Reveal>
+  );
+}
+
+// ===== 4. TRANG CHỦ: lời dẫn + mục lục chuyên mục =====
+export function HomeIntro({ posts, onSelectTab }) {
+  const milestones = posts.filter((p) => p.category === 'Lịch Sử Hình Thành');
+  const memories = posts.filter((p) => p.category === 'Ký ước trường xưa');
+  const teachers = posts.filter((p) => p.category === 'Thầy Cô Tiêu Biểu');
+
+  const stats = [
+    { label: 'Năm thành lập', value: SCHOOL.foundedYear, icon: 'timeline' },
+    { label: 'Mốc lịch sử', value: milestones.length, icon: 'award' },
+    { label: 'Thầy cô tiêu biểu', value: teachers.length, icon: 'teacher' },
+    { label: 'Ký ức các khóa', value: memories.length, icon: 'letter' },
+  ];
+
+  return (
+    <div className="space-y-10">
+      <Reveal className="rounded-2xl border border-stone-200 bg-white p-6 shadow-card sm:p-9">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Lời mở đầu</p>
+        <h2 className="mt-2 max-w-prose font-serif text-2xl font-bold leading-snug text-primary sm:text-3xl">
+          Nơi ký ức của nhiều thế hệ Hoàng Văn Thụ cùng lên tiếng
+        </h2>
+        <p className="mt-4 max-w-prose text-[15px] leading-relaxed text-stone-700">
+          Từ những ngày đầu trên mảnh đất Vàng Danh đến hôm nay, mỗi thế hệ thầy và trò nhà trường đều
+          để lại một dấu ấn. Phòng truyền thống số này gom những dấu ấn ấy thành một hành trình liền mạch —
+          ai cũng có thể tìm thấy mình trong đó.
+        </p>
+        <dl className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-xl border border-stone-200 bg-paper p-4">
+              <dt className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-stone-500">
+                <Icon name={s.icon} size={14} className="text-accent" /> {s.label}
+              </dt>
+              <dd className="mt-1 font-serif text-2xl font-bold tabular-nums text-primary">{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </Reveal>
+
+      <div>
+        <h2 className="mb-4 font-serif text-lg font-bold text-primary">Khám phá theo chuyên mục</h2>
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.entries(
+            posts.reduce((acc, p) => {
+              acc[p.category] = (acc[p.category] || 0) + 1;
+              return acc;
+            }, {}),
+          ).map(([cat, n]) => {
+            const icon = CATEGORIES.find((c) => c.id === cat)?.icon ?? 'image';
+            return (
+              <li key={cat}>
+                <button
+                  type="button"
+                  onClick={() => onSelectTab(cat)}
+                  className="group flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-4 text-left shadow-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lift focus-ring"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-lg bg-primary/5 text-primary transition group-hover:bg-primary group-hover:text-white">
+                      <Icon name={icon} size={18} />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold text-ink">{cat}</span>
+                      <span className="block text-xs text-stone-500">{n} mục đã lưu</span>
+                    </span>
+                  </span>
+                  <Icon name="chevronRight" size={18} className="text-stone-400 transition group-hover:translate-x-0.5 group-hover:text-accent" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );

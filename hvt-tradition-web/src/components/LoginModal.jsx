@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import Modal, { ModalCloseButton } from './Modal.jsx';
+import Icon from './Icons.jsx';
 import { verifyAdminPassword } from '../data.js';
 
-// MODAL ĐĂNG NHẬP ADMIN
 export default function LoginModal({ onClose, onSuccess }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -10,58 +11,60 @@ export default function LoginModal({ onClose, onSuccess }) {
     e.preventDefault();
     if (verifyAdminPassword(password)) {
       sessionStorage.setItem('hvt_logged', 'true');
-      setPassword('');
-      setError('');
       onSuccess();
     } else {
-      setError('Sai mật khẩu đăng nhập!');
+      setError('Sai mật khẩu đăng nhập. Vui lòng thử lại.');
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 font-bold text-xl"
-          aria-label="Đóng"
-        >
-          &times;
-        </button>
-        <div className="text-center mb-6">
-          <div className="bg-primary text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
-            🔒
-          </div>
-          <h3 className="text-xl font-bold text-primary">Đăng Nhập Quản Trị Admin</h3>
-          <p className="text-xs text-slate-500 mt-1">Hệ thống quản trị viên nhà trường</p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-              Mật khẩu Admin:
-            </label>
-            <input
-              type="password"
-              required
-              autoFocus
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError('');
-              }}
-              className="w-full border rounded-lg px-3 py-2 text-sm outline-none"
-              placeholder="Nhập mật khẩu..."
-            />
-            {error && <p className="text-red-600 text-xs mt-2 font-medium">⚠️ {error}</p>}
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-primary hover:bg-blue-900 text-white py-2.5 rounded-lg font-semibold text-sm shadow transition"
-          >
-            Xác Nhận Đăng Nhập
-          </button>
-        </form>
+    <Modal labelledBy="login-title" onClose={onClose} panelClassName="max-w-md p-6 sm:p-8">
+      <ModalCloseButton onClick={onClose} />
+
+      <div className="mb-6 text-center">
+        <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary/5 text-primary ring-1 ring-primary/15">
+          <Icon name="lock" size={22} />
+        </span>
+        <h2 id="login-title" className="font-serif text-xl font-bold text-primary">
+          Đăng nhập Quản trị Admin
+        </h2>
+        <p className="mt-1 text-xs text-stone-500">Khu vực dành riêng cho ban quản trị phòng truyền thống</p>
       </div>
-    </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="admin-password" className="field-label">
+            Mật khẩu Admin
+          </label>
+          <input
+            id="admin-password"
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError('');
+            }}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? 'login-error' : undefined}
+            className="field-input"
+            placeholder="Nhập mật khẩu…"
+          />
+          {error && (
+            <p id="login-error" role="alert" className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700">
+              <Icon name="close" size={14} /> {error}
+            </p>
+          )}
+        </div>
+
+        <button type="submit" className="btn-primary focus-ring w-full">
+          <Icon name="check" size={16} /> Xác nhận đăng nhập
+        </button>
+        <p className="text-center text-[11px] leading-relaxed text-stone-500">
+          Bạn là cựu học sinh hoặc phụ huynh muốn đóng góp tư liệu? Hãy liên hệ CLB Tin học của nhà trường.
+        </p>
+      </form>
+    </Modal>
   );
 }

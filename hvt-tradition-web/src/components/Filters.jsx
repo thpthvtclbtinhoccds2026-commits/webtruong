@@ -1,44 +1,77 @@
-import { CATEGORIES, SCHOOL_YEARS } from '../data.js';
+import { CATEGORIES, SCHOOL_YEARS, NO_YEAR_FILTER_TABS } from '../data.js';
+import Icon from './Icons.jsx';
 
-const HIDE_YEAR_TABS = ['Lịch Sử Hình Thành', 'Ký ước trường xưa'];
-
+/**
+ * Thanh điều hướng chuyên mục (tablist chuẩn WAI-ARIA) + bộ lọc năm học.
+ * Điều hướng bằng phím mũi tên Trái/Phải như một tablist thật.
+ */
 export default function Filters({ currentTab, currentYear, onSelectTab, onChangeYear }) {
-  const showYearFilter = !HIDE_YEAR_TABS.includes(currentTab);
+  const showYearFilter = !NO_YEAR_FILTER_TABS.includes(currentTab);
+
+  const onKeyDown = (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const idx = CATEGORIES.findIndex((c) => c.id === currentTab);
+    const dir = e.key === 'ArrowRight' ? 1 : -1;
+    const next = CATEGORIES[(idx + dir + CATEGORIES.length) % CATEGORIES.length];
+    onSelectTab(next.id);
+    document.getElementById(`tab-${next.icon}`)?.focus();
+  };
 
   return (
-    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-8 border-b pb-4">
-      <div className="flex flex-wrap gap-1.5 md:gap-2">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => onSelectTab(cat)}
-            className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition ${
-              currentTab === cat
-                ? 'bg-primary text-white shadow'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {showYearFilter && (
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-slate-600 uppercase">Năm học:</label>
-          <select
-            value={currentYear}
-            onChange={(e) => onChangeYear(e.target.value)}
-            className="border rounded-lg px-3 py-1.5 text-sm bg-white font-medium text-primary outline-none shadow-sm"
-          >
-            {SCHOOL_YEARS.map((y) => (
-              <option key={y} value={y}>
-                {y === 'Tất cả' ? 'Tất cả các năm' : y}
-              </option>
-            ))}
-          </select>
+    <div className="no-print mb-8 border-b border-stone-300 pb-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div
+          role="tablist"
+          aria-label="Chuyên mục"
+          onKeyDown={onKeyDown}
+          className="flex flex-wrap gap-2"
+        >
+          {CATEGORIES.map((cat) => {
+            const active = currentTab === cat.id;
+            return (
+              <button
+                key={cat.id}
+                id={`tab-${cat.icon}`}
+                role="tab"
+                type="button"
+                aria-selected={active}
+                aria-controls="panel-noi-dung"
+                tabIndex={active ? 0 : -1}
+                onClick={() => onSelectTab(cat.id)}
+                className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition sm:text-sm focus-ring ${
+                  active
+                    ? 'border-primary bg-primary text-white shadow-card'
+                    : 'border-stone-300 bg-white text-stone-700 hover:border-primary/50 hover:text-primary'
+                }`}
+              >
+                <Icon name={cat.icon} size={16} />
+                <span className="whitespace-nowrap">{cat.id}</span>
+              </button>
+            );
+          })}
         </div>
-      )}
+
+        {showYearFilter && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="year-filter" className="text-xs font-semibold uppercase tracking-wide text-stone-600">
+              Năm học
+            </label>
+            <select
+              id="year-filter"
+              value={currentYear}
+              onChange={(e) => onChangeYear(e.target.value)}
+              className="field-input w-auto min-h-[44px] font-semibold text-primary sm:w-52"
+            >
+              {SCHOOL_YEARS.map((y) => (
+                <option key={y} value={y}>
+                  {y === 'Tất cả' ? 'Tất cả các năm' : y}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
