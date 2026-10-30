@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Modal, { ModalCloseButton } from './Modal.jsx';
 import Icon from './Icons.jsx';
-import { verifyAdminPassword } from '../data.js';
+import { verifyAdminPassword } from '../storage.js';
 
 export default function LoginModal({ onClose, onSuccess }) {
   const [password, setPassword] = useState('');

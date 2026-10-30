@@ -1,11 +1,20 @@
 // ===== Dữ liệu & hằng số của Phòng Truyền Thống Online - THPT Hoàng Văn Thụ =====
 
-export const SCHOOL = {
-  name: 'Trường THPT Hoàng Văn Thụ',
-  shortName: 'THPT Hoàng Văn Thụ',
-  location: 'Phường Vàng Danh, Tỉnh Quảng Ninh',
-  foundedYear: 1984,
-};
+import { getSchool } from './storage.js';
+
+/**
+ * Thông tin trường — ĐỌC TỪ trang Quản trị (không cần sửa code khi đổi).
+ * Object này được cập nhật mỗi lần lưu trong AdminDashboard nên giá trị
+ * luôn đúng với nội dung quản trị viên đã nhập.
+ */
+export const SCHOOL = new Proxy(
+  {},
+  {
+    get: (_, k) => getSchool()[k],
+    ownKeys: () => Reflect.ownKeys(getSchool()),
+    getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+  },
+);
 
 /** Icon SVG (tên) cho từng chuyên mục — thay cho emoji. */
 export const CATEGORIES = [
@@ -15,14 +24,14 @@ export const CATEGORIES = [
   { id: 'Thành Tích & Khen Thưởng', icon: 'award' },
   { id: 'Hoạt Động & CLB', icon: 'club' },
   { id: 'Video & Tư Liệu', icon: 'video' },
-  { id: 'Ký ước trường xưa', icon: 'letter' },
+  { id: 'Ký ức trường xưa', icon: 'letter' },
 ];
 
 /** Tên chuyên mục thuần (dùng cho form admin & bộ lọc). */
 export const CATEGORY_NAMES = CATEGORIES.map((c) => c.id);
 
 /** Các tab không áp dụng bộ lọc năm học. */
-export const NO_YEAR_FILTER_TABS = ['Lịch Sử Hình Thành', 'Ký ước trường xưa'];
+export const NO_YEAR_FILTER_TABS = ['Lịch Sử Hình Thành', 'Ký ức trường xưa'];
 
 export const SCHOOL_YEARS = [
   'Tất cả',
@@ -32,63 +41,24 @@ export const SCHOOL_YEARS = [
   '2023 - 2024',
 ];
 
-export const DEFAULT_BANNER =
-  'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1600&q=80';
-
-export const DEFAULT_POSTS = [
-  {
-    id: 1,
-    category: 'Trang Chủ',
-    year: '2026 - 2027',
-    title: 'Giới thiệu chung về trường THPT Hoàng Văn Thụ',
-    content:
-      'Trường THPT Hoàng Văn Thụ tọa lạc tại phường Vàng Danh, tỉnh Quảng Ninh, là nơi nuôi dưỡng ước mơ, hoài bão của các thế hệ học sinh.',
-    images: [
-      'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
-    ],
-    videos: [],
-  },
-  {
-    id: 2,
-    category: 'Lịch Sử Hình Thành',
-    year: '1984',
-    title: 'Thành lập trường',
-    content:
-      'Những ngày đầu thành lập nhà trường với nhiều khó khăn, thử thách nhưng đầy lòng nhiệt huyết của các thế hệ thầy cô.',
-    images: [
-      'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80',
-    ],
-    videos: [],
-  },
-  {
-    id: 3,
-    category: 'Ký ước trường xưa',
-    year: 'Khóa K12',
-    title: 'Tâm sự tuổi hồng - Mãi nhớ Hoàng Văn Thụ',
-    content:
-      'Ba năm cấp ba trôi qua nhanh như một giấc mơ. Chúc cho mái trường luôn ngập tràn thành công và các bạn luôn giữ mãi ngọn lửa nhiệt huyết!',
-    images: [
-      'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
-    ],
-    videos: [],
-  },
-];
-
-// Keys lưu localStorage (giống bản index37 để giữ dữ liệu cũ nếu có)
-export const LS_POSTS_KEY = 'hvt_v37_posts';
-export const LS_BANNER_KEY = 'hvt_banner_img';
+// Banner & bài viết mặc định giờ nằm trong src/storage.js (SEED_DATA).
 
 // ===== Tiện ích =====
 
-// Chuyển link Google Drive sang link xem ảnh trực tiếp
+// Chuyển link Google Drive sang link xem ảnh trực tiếp.
+// Đồng thời cho phép dùng key ảnh cục bộ đã khai báo trong src/assets/images.js
+// (vd: "bannerDinhLy") hoặc đường dẫn tĩnh trong public/ (vd: "/img/...").
+import { resolveImage } from './assets/images.js';
+
 export function formatGoogleDriveUrl(url) {
   if (!url) return '';
-  url = url.trim();
+  url = String(url).trim();
   const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (match && match[1]) {
     return `https://lh3.googleusercontent.com/d/${match[1]}`;
   }
-  return url;
+  // key ảnh local / ảnh trong public/ -> đường dẫn thật sau khi build
+  return resolveImage(url);
 }
 
 export function normalizeYear(str) {
@@ -105,45 +75,7 @@ export function getYouTubeThumbnail(url) {
   if (ytMatch && ytMatch[2].length === 11) {
     return `https://img.youtube.com/vi/${ytMatch[2]}/hqdefault.jpg`;
   }
-  return 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80';
-}
-
-// Kiểm tra mật khẩu admin (mã hóa nhị phân như bản gốc: "hvt admin")
-export function verifyAdminPassword(inputStr) {
-  const binaryMatrix = [
-    '1101000',
-    '1110110',
-    '1110100',
-    '0110010',
-    '0110000',
-    '0110010',
-    '0110110',
-    '1000000',
-    '1100001',
-    '1100100',
-    '1101101',
-    '1101001',
-    '1101110',
-  ];
-  if (inputStr.length !== binaryMatrix.length) return false;
-  for (let i = 0; i < inputStr.length; i++) {
-    if (inputStr.charCodeAt(i).toString(2).padStart(7, '0') !== binaryMatrix[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// Load / save dữ liệu bài viết
-export function loadPosts() {
-  try {
-    const saved =
-      JSON.parse(localStorage.getItem(LS_POSTS_KEY)) ||
-      JSON.parse(localStorage.getItem('hvt_v34_posts'));
-    return Array.isArray(saved) && saved.length ? saved : DEFAULT_POSTS;
-  } catch {
-    return DEFAULT_POSTS;
-  }
+  return '/img/a2-900.jpg'; // ảnh thật của trường thay ảnh minh họa
 }
 
 /** Đếm số mốc / bài viết trong một chuyên mục (dùng cho trang chủ & tab). */
@@ -157,18 +89,6 @@ export function estimateCurrentKhoa(yearsSinceFounding = null) {
   return `Khóa K${Math.max(1, base)}`;
 }
 
-export function savePosts(posts) {
-  localStorage.setItem(LS_POSTS_KEY, JSON.stringify(posts));
-}
 
-export function loadBanner() {
-  return localStorage.getItem(LS_BANNER_KEY) || DEFAULT_BANNER;
-}
 
-export function saveBanner(url) {
-  localStorage.setItem(LS_BANNER_KEY, url);
-}
 
-export function clearBanner() {
-  localStorage.removeItem(LS_BANNER_KEY);
-}

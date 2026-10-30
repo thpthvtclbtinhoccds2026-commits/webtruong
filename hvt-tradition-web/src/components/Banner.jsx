@@ -1,4 +1,5 @@
-import { formatGoogleDriveUrl, SCHOOL } from '../data.js';
+import { SCHOOL } from '../data.js';
+import SmartImage from './SmartImage.jsx';
 import Icon from './Icons.jsx';
 
 /** Banner trang chủ: ảnh tư liệu lớn + lớp phủ trầm + dòng chữ serif. */
@@ -6,11 +7,13 @@ export default function Banner({ bannerImage }) {
   return (
     <section className="relative isolate flex min-h-[340px] flex-col justify-end overflow-hidden bg-primary text-white sm:min-h-[420px]">
       <div className="absolute inset-0 -z-10">
-        <img
-          src={formatGoogleDriveUrl(bannerImage)}
+        <SmartImage
+          src={bannerImage}
+          size="full"
+          eager
           alt={`Quang cảnh ${SCHOOL.name}`}
-          fetchPriority="high"
-          className="h-full w-full object-cover"
+          className="h-full w-full"
+          imgClassName="object-cover"
         />
         {/* Lớp phủ chuyển sắc để chữ luôn đủ tương phản trên mọi ảnh */}
         <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/45 to-stone-950/25" />

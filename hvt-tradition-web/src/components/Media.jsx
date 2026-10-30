@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatGoogleDriveUrl, getYouTubeThumbnail } from '../data.js';
+import { imageSrc, PLACEHOLDER } from '../assets/images.js';
+import SmartImage from './SmartImage.jsx';
 import Icon from './Icons.jsx';
-
-const FALLBACK_IMG =
-  'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80';
 
 /** Tôn trọng cài đặt "giảm chuyển động" của hệ điều hành. */
 export function usePrefersReducedMotion() {
@@ -18,7 +17,7 @@ export function usePrefersReducedMotion() {
   return reduced;
 }
 
-/** Lightbox xem ảnh toàn màn hình (Esc đóng, có nút prev/next). */
+/** Lightbox xem ảnh toàn màn hình (Esc đóng, prev/next bằng phím). */
 function Lightbox({ images, index, onClose, onIndex }) {
   const reduced = usePrefersReducedMotion();
   const total = images.length;
@@ -46,11 +45,13 @@ function Lightbox({ images, index, onClose, onIndex }) {
       aria-label="Xem ảnh tư liệu toàn màn hình"
       onClick={onClose}
     >
-      <img
-        src={images[index]}
-        alt={`Ảnh tư liệu ${index + 1} trong ${total}`}
-        className={`max-h-[78vh] max-w-full rounded object-contain shadow-lift ${reduced ? '' : 'animate-rise'}`}
-        onClick={(e) => e.stopPropagation()}
+      <SmartImage
+        src={images[index].ref ?? images[index].full}
+        size="full"
+        eager
+        alt={images[index].alt}
+        className={`max-h-[78vh] w-auto rounded bg-transparent ${reduced ? '' : 'animate-rise'}`}
+        imgClassName="object-contain"
       />
       <div className="mt-4 flex items-center gap-3 text-white" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="btn-ghost !bg-white/10 !border-white/25 !text-white" onClick={() => onIndex((index - 1 + total) % total)}>
@@ -68,7 +69,7 @@ function Lightbox({ images, index, onClose, onIndex }) {
   );
 }
 
-/** Slider ảnh tự động chuyển, có pause khi hover/focus và khi người dùng giảm chuyển động. */
+/** Slider ảnh tự động chuyển, pause khi hover/focus; dùng responsive <picture>. */
 export function ImageSlider({ images, alt = 'Ảnh tư liệu nhà trường' }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -101,19 +102,44 @@ export function ImageSlider({ images, alt = 'Ảnh tư liệu nhà trường' })
       >
         {images.map((img, i) => (
           <div key={i} className="flex w-full shrink-0 items-center justify-center bg-white p-4">
-            <img
-              src={img}
-              alt={`${alt} — ảnh ${i + 1}/${count}`}
-              loading="lazy"
-              onError={(e) => {
-                if (e.currentTarget.dataset.fallback !== '1') {
-                  e.currentTarget.dataset.fallback = '1';
-                  e.currentTarget.src = FALLBACK_IMG;
-                }
-              }}
-              className="archive-frame max-h-[480px] w-auto max-w-full cursor-zoom-in object-contain"
-              onClick={() => setZoomed(true)}
-            />
+            {String(img.ref || '').startsWith('idb:') ? (
+              <SmartImage
+                src={img.ref}
+                size="card"
+                eager={i === 0}
+                alt={`${alt} — ảnh ${i + 1}/${count}`}
+                className="archive-frame max-h-[480px] w-auto max-w-full"
+                imgClassName="cursor-zoom-in object-contain"
+              />
+            ) : (
+            <picture>
+              {img.thumb && img.thumb !== img.card && (
+                <source media="(max-width: 639px)" srcSet={img.thumb} />
+              )}
+              {img.full && img.full !== img.card && (
+                <source media="(min-width: 1280px)" srcSet={img.full} />
+              )}
+              <img
+                src={img.card}
+                srcSet={`${img.thumb || img.card} 480w, ${img.card} 900w, ${img.full || img.card} 1600w`}
+                sizes="(max-width: 640px) 92vw, (max-width: 1280px) 640px, 820px"
+                alt={`${alt} — ảnh ${i + 1}/${count}`}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                width={900}
+                height={675}
+                onError={(e) => {
+                  if (e.currentTarget.dataset.fallback !== '1') {
+                    e.currentTarget.dataset.fallback = '1';
+                    e.currentTarget.removeAttribute('srcset');
+                    e.currentTarget.src = PLACEHOLDER;
+                  }
+                }}
+                className="archive-frame max-h-[480px] w-auto max-w-full cursor-zoom-in object-contain"
+                onClick={() => setZoomed(true)}
+              />
+            </picture>
+            )}
           </div>
         ))}
       </div>
@@ -136,7 +162,6 @@ export function ImageSlider({ images, alt = 'Ảnh tư liệu nhà trường' })
             <Icon name="chevronRight" size={18} />
             <span className="sr-only">Ảnh tiếp theo</span>
           </button>
-          {/* Điểm chỉ báo: bấm để chuyển trực tiếp */}
           <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
             {images.map((_, i) => (
               <button
@@ -162,7 +187,7 @@ export function ImageSlider({ images, alt = 'Ảnh tư liệu nhà trường' })
   );
 }
 
-/** Card video: thumbnail YouTube + mở lightbox iframe thay vì tab mới (kèm rel an toàn). */
+/** Card video: thumbnail YouTube + mở lightbox iframe (kèm rel an toàn). */
 function VideoCard({ url, title }) {
   const [open, setOpen] = useState(false);
   const isEmbeddable = /youtu\.?be/.test(url);
@@ -179,6 +204,7 @@ function VideoCard({ url, title }) {
           src={thumb}
           alt={title ? `Video: ${title}` : 'Video tư liệu nhà trường'}
           loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover opacity-90 transition duration-300 group-hover:scale-[1.02] group-hover:opacity-100"
         />
         <span className="absolute inset-0 grid place-items-center bg-stone-950/35 transition group-hover:bg-stone-950/20">
@@ -222,7 +248,15 @@ function VideoCard({ url, title }) {
 }
 
 export function MediaContent({ post }) {
-  const images = (post.images || []).map(formatGoogleDriveUrl);
+  // Mỗi ảnh -> object {card, thumb, full, alt}.
+  // card/thumb/full giữ nguyên REF (key repo / link / idb:...) — SmartImage tự phân giải.
+  const images = (post.images || []).map((src, i) => ({
+    ref: src,
+    card: formatGoogleDriveUrl(src),
+    thumb: guessKey(src) ? imageSrc(guessKey(src), 'thumb') : formatGoogleDriveUrl(src),
+    full: guessKey(src) ? imageSrc(guessKey(src), 'full') : formatGoogleDriveUrl(src),
+    alt: `${post.title || 'Ảnh tư liệu'} — ảnh ${i + 1}`,
+  }));
   const videos = post.videos || [];
 
   if (images.length === 0 && videos.length === 0) {
@@ -244,4 +278,10 @@ export function MediaContent({ post }) {
       ))}
     </>
   );
+}
+
+/** Đoán key ảnh cục bộ từ đường dẫn "/img/a3-900.jpg" -> "a3". */
+function guessKey(src) {
+  const m = String(src || '').match(/\/img\/([a-z0-9]+)-\d+\./i);
+  return m ? m[1] : null;
 }
